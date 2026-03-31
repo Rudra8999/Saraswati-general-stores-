@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: categories
+    // Fields: name (string), icon (string), discount (number)
+    //
+    // Collection: products
+    // Fields: name (string), description (string), price (number), discount (number), categoryId (string), imageUrl (string), stock (number)
+    //
+    // Collection: orders
+    // Fields: userId (string), customerName (string), address (string), contact (string), items (list), total (number), paymentProofUrl (string), status (string), createdAt (timestamp)
+    //
+    // Collection: users
+    // Fields: email (string), role (string), displayName (string)
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == "saraswatigeneral@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isRecent(time) {
+      return time > request.time - duration.value(5, 'm') && time <= request.time;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidCategory(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             (!('icon' in data) || (data.icon is string && data.icon.size() < 50)) &&
+             (!('discount' in data) || (data.discount is number && data.discount >= 0 && data.discount <= 100));
+    }
+
+    function isValidProduct(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.price is number && data.price >= 0 &&
+             data.categoryId is string &&
+             (!('discount' in data) || (data.discount is number && data.discount >= 0 && data.discount <= 100)) &&
+             (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() < 1000)) &&
+             (!('stock' in data) || (data.stock is number && data.stock >= 0));
+    }
+
+    function isValidOrder(data) {
+      return data.userId == request.auth.uid &&
+             data.customerName is string && data.customerName.size() > 0 &&
+             data.address is string && data.address.size() > 0 &&
+             data.contact is string && data.contact.size() > 0 &&
+             data.items is list && data.items.size() > 0 &&
+             data.total is number && data.total >= 0 &&
+             data.paymentProofUrl is string &&
+             data.status == 'pending' &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidUser(data) {
+      return data.email is string &&
+             data.role in ['admin', 'customer'] &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidOrder(request.resource.data);
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'customer';
+      allow update: if isAuthenticated() && (isOwner(userId) && request.resource.data.role == resource.data.role || isAdmin());
+    }
+  }
+}

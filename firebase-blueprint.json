@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "Category": {
+      "title": "Category",
+      "description": "Product categories (e.g., Notebooks, Pens).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Category name" },
+        "icon": { "type": "string", "description": "Lucide icon name" },
+        "discount": { "type": "number", "description": "Category-level discount percentage" }
+      },
+      "required": ["name"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Items sold in the store.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Product name" },
+        "description": { "type": "string", "description": "Product description" },
+        "price": { "type": "number", "description": "Base price" },
+        "discount": { "type": "number", "description": "Product-level discount percentage" },
+        "categoryId": { "type": "string", "description": "Reference to Category ID" },
+        "imageUrl": { "type": "string", "description": "Image URL" },
+        "stock": { "type": "number", "description": "Available quantity" }
+      },
+      "required": ["name", "price", "categoryId"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer orders.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Customer UID" },
+        "customerName": { "type": "string", "description": "Customer name" },
+        "address": { "type": "string", "description": "Delivery address" },
+        "contact": { "type": "string", "description": "Phone number" },
+        "items": { "type": "array", "description": "List of items ordered" },
+        "total": { "type": "number", "description": "Total price paid" },
+        "paymentProofUrl": { "type": "string", "description": "URL to payment screenshot" },
+        "status": { "type": "string", "description": "Order status (pending, completed, cancelled)", "enum": ["pending", "completed", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Order timestamp" }
+      },
+      "required": ["userId", "customerName", "address", "contact", "items", "total", "paymentProofUrl", "status", "createdAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profiles.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "User email" },
+        "role": { "type": "string", "description": "User role (admin, customer)", "enum": ["admin", "customer"] },
+        "displayName": { "type": "string", "description": "User display name" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/categories/{categoryId}": { "schema": "Category", "description": "Store categories" },
+    "/products/{productId}": { "schema": "Product", "description": "Store products" },
+    "/orders/{orderId}": { "schema": "Order", "description": "Customer orders" },
+    "/users/{userId}": { "schema": "User", "description": "User profiles" }
+  }
+}
